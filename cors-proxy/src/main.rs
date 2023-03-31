@@ -1,4 +1,5 @@
 mod allow_request;
+mod test_axum;
 mod middleware;
 
 use std::net::SocketAddr;
