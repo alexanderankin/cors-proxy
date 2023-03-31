@@ -1,4 +1,5 @@
 mod allow_request;
+mod middleware;
 
 use std::net::SocketAddr;
 

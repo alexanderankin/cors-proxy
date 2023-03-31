@@ -15,6 +15,22 @@ impl<'l> Url<'l> {
     }
 }
 
+trait ChecksHeaders {
+    fn header_contains(&self, header_name: &str, contains: &str) -> bool;
+    fn header_matches(&self, header_name: &str, predicate: &dyn Fn(&str) -> bool) -> bool;
+}
+
+impl<B> ChecksHeaders for Request<B> {
+    fn header_contains(&self, header_name: &str, contains: &str) -> bool {
+        self.header_matches(header_name, &|v: &str| v.contains(contains))
+    }
+
+    fn header_matches(&self, header_name: &str, predicate: &dyn Fn(&str) -> bool) -> bool {
+        let header_value = self.headers().get(header_name).map(|h| h.to_str().ok()).flatten();
+        header_value.map(predicate).unwrap_or(false)
+    }
+}
+
 fn is_preflight_info_refs<B>(req: &Request<B>, u: &Url) -> bool {
     req.method() == "OPTIONS"
         && u.pathname.ends_with("/info/refs")
@@ -43,13 +59,14 @@ fn is_pull<B>(req: &Request<B>) -> bool {
 
 fn is_preflight_push<B>(req: &Request<B>) -> bool {
     req.method() == "OPTIONS"
-        && req.headers().get("access-control-request-headers").unwrap().to_str().unwrap_or("").contains("content-type")
+        && req.header_contains("access-control-request-headers", "content-type")
         && req.uri().path().ends_with("git-receive-pack")
 }
 
 fn is_push<B>(req: &Request<B>) -> bool {
     req.method() == "POST"
-        && req.headers().get("content-type").map(|s| { s == "application/x-git-receive-pack-request" }).unwrap_or(false)
+        && req.header_matches("content-type",
+                              &|s| s == "application/x-git-receive-pack-request")
         && req.uri().path().ends_with("git-receive-pack")
 }
 
